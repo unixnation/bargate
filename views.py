@@ -218,8 +218,8 @@ def portallogin():
 		cookie_name    = request.args.get('cookie0')
 		cookie_content = request.args.get('cookie1').split(';')[0]
 	elif request.method == 'POST':
-		cookie_name    = request.form('cookie0')
-		cookie_content = request.form('cookie1').split(';')[0]
+		cookie_name    = request.form.getlist('cookie0')
+		cookie_content = request.form.getlist('cookie1').split(';')[0]
 
 	decoded_cookie_content = bargate.core.decode_session_cookie(cookie_content)
 	json_cookie_content    = bargate.core.flask_load_session_json(decoded_cookie_content)
