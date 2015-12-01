@@ -20,7 +20,7 @@ import bargate.core
 from flask import Flask, request, session, redirect, url_for, flash, g, abort, make_response
 import kerberos
 import mimetypes
-import os 
+import os
 import time
 import json
 import re
@@ -48,10 +48,10 @@ def login():
 			if not result:
 				flash('Incorrect username and/or password','alert-danger')
 				return redirect(url_for('login'))
-			
+
 			## Set the username in the session
 			session['username']  = request.form['username'].lower()
-			
+
 			## Check if the user selected "Log me out when I close the browser"
 			if app.config['REMEMBER_ME_ENABLED']:
 				permanent = request.form.get('sec',default="")
@@ -86,13 +86,13 @@ def login():
 def logout():
 	## Record the logout
 	bargate.settings.set_user_data('logout',str(time.time()))
-	
+
 	## Log out of the session
 	bargate.core.session_logout()
-	
+
 	## Tell the user
 	flash('You were logged out successfully','alert-success')
-	
+
 	## redirect the user to the logon page
 	return redirect(url_for('login'))
 
@@ -110,7 +110,7 @@ def changelog():
 @app.route('/nojs')
 def nojs():
 	return bargate.core.render_page('nojs.html')
-	
+
 @app.route('/test')
 def test():
 	return bargate.core.render_page('test.html')
@@ -138,22 +138,22 @@ def bookmarks():
 	if request.method == 'GET':
 		bookmarks = bargate.settings.get_user_bookmarks()
 		return bargate.core.render_page('bookmarks.html', active='user',pwd='',bookmarks = bookmarks)
-		
+
 	elif request.method == 'POST':
 		action = request.form['action']
-		
+
 		if action == 'add':
-		
+
 			try:
 				bookmark_name     = request.form['bookmark_name']
 				bookmark_function = bargate.smb.check_name(request.form['bookmark_function'])
 				bookmark_path     = bargate.smb.check_path(request.form['bookmark_path'])
-				
+
 			except KeyError as e:
 				bargate.errors.fatal('Invalid Bookmark','You missed something on the previous page!')
 			except ValueError as e:
 				bargate.errors.fatal('Invalid Bookmark','Invalid bookmark name or bookmark value: ' + str(e))
-				
+
 			try:
 				test_name = url_for(str(bookmark_function),path=bookmark_path)
 			except werkzeug.routing.BuildError as ex:
@@ -162,29 +162,29 @@ def bookmarks():
 			g.redis.hset(bmPrefix + bookmark_name,'function',bookmark_function)
 			g.redis.hset(bmPrefix + bookmark_name,'path',bookmark_path)
 			g.redis.sadd(bmKey,bookmark_name)
-		
+
 			flash('Bookmark added successfully','alert-success')
 			## return the user to the folder they were in
 			return redirect(url_for(bookmark_function,path=bookmark_path))
-			
+
 		elif action == 'delete':
 			bookmark_name     = request.form['bookmark_name']
-			
+
 			if g.redis.exists(bmKey):
 				if g.redis.sismember(bmKey,bookmark_name):
-				
+
 					## Delete from the bookmarks key
 					g.redis.srem(bmKey,bookmark_name)
-					
+
 					## Delete the bookmark hash
 					g.redis.delete(bmPrefix + bookmark_name)
-					
+
 					## Let the user know and redirect
 					flash('Bookmark deleted successfully','alert-success')
 					return redirect(url_for('bookmarks'))
 
 			flash('Bookmark not found!','alert-danger')
-			return redirect(url_for('bookmarks'))					
+			return redirect(url_for('bookmarks'))
 
 ################################################################################
 #### Who is online?
@@ -204,7 +204,7 @@ def online(last=5):
 	elif last == 180:
 		last_str = "3 hours"
 	else:
-		last_str = str(last) + " minutes"			
+		last_str = str(last) + " minutes"
 
 	usernames = bargate.core.list_online_users(last)
 	return 	bargate.core.render_page('online.html',online=usernames,active="help",last=last_str)
@@ -214,8 +214,12 @@ def online(last=5):
 
 @app.route('/portallogin', methods=['POST', 'GET'])
 def portallogin():
-	cookie_name    = request.args.get('cookie0')
-	cookie_content = request.args.get('cookie1').split(';')[0]
+	if request.method == 'GET':
+		cookie_name    = request.args.get('cookie0')
+		cookie_content = request.args.get('cookie1').split(';')[0]
+	elif request.method == 'POST':
+		cookie_name    = request.form('cookie0')
+		cookie_content = request.form('cookie1').split(';')[0]
 
 	decoded_cookie_content = bargate.core.decode_session_cookie(cookie_content)
 	json_cookie_content    = bargate.core.flask_load_session_json(decoded_cookie_content)
@@ -235,4 +239,3 @@ def portallogin():
 	else:
 		session['logged_in']    = True
 		return redirect(url_for(app.config['SHARES_DEFAULT']))
-
